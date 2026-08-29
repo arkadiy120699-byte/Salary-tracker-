@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>תלוש — Табель смен и зарплаты</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="theme-color" content="#16221F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #16221F;
+    --bg-raised: #1D2C28;
+    --bg-sunken: #101B18;
+    --paper: #EDEAE2;
+    --paper-dim: #A9B3AC;
+    --gold: #C9A227;
+    --gold-dim: #8C7423;
+    --sage: #7C9885;
+    --red: #C15B4A;
+    --line: #2C3B36;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-t: env(safe-area-inset-top, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    font-size:15px;
+  }
+  body.lang-he{ font-family:'IBM Plex Sans Hebrew', 'IBM Plex Sans', sans-serif; }
+  body.lang-he .brand, body.lang-he h1, body.lang-he .receipt-total .lbl{
+    font-family:'IBM Plex Sans Hebrew', sans-serif;
+  }
+  button, input{ font-family:inherit; }
+  .wrap{
+    max-width:1040px;
+    margin:0 auto;
+    padding:0 16px calc(40px + var(--safe-b));
+  }
+
+  /* ---------- sticky header ---------- */
+  .headbar{
+    position:sticky;
+    top:0;
+    z-index:20;
+    background:var(--bg);
+    padding-top:calc(16px + var(--safe-t));
+    padding-bottom:12px;
+    border-bottom:1px solid var(--line);
+  }
+  .head-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .brand{
+    font-family:'Fraunces', serif;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin:0 0 4px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:clamp(22px,6vw,32px);
+    margin:0 0 12px;
+    color:var(--paper);
+  }
+  .lang-switch{
+    display:flex;
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+    flex:0 0 auto;
+  }
+  .lang-switch button{
+    background:var(--bg-raised);
+    border:none;
+    color:var(--paper-dim);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    padding:9px 10px;
+    cursor:pointer;
+    min-width:38px;
+    min-height:40px;
+  }
+  .lang-switch button + button{ border-inline-start:1px solid var(--line); }
+  .lang-switch button.active{ background:var(--gold); color:var(--bg); }
+
+  .month-nav{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .month-nav button{
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    color:var(--paper);
+    width:44px;height:44px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:18px;
+    flex:0 0 auto;
+  }
+  .month-nav button:active{border-color:var(--gold);color:var(--gold);}
+  .month-nav .flip{ display:inline-block; }
+  [dir="rtl"] .month-nav .flip{ transform:scaleX(-1); }
+  .month-label{
+    flex:1;
+    text-align:center;
+    font-size:15px;
+    letter-spacing:0.03em;
+  }
+
+  /* sticky pay total strip */
+  .pay-strip{
+    margin-top:12px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+  }
+  .pay-strip .lbl{
+    font-family:'Fraunces', serif;
+    font-size:14px;
+    color:var(--paper-dim);
+  }
+  body.lang-he .pay-strip .lbl{ font-family:'IBM Plex Sans Hebrew', sans-serif; }
+  .pay-strip .amt{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:22px;
+    color:var(--gold);
+  }
+  .pay-strip .hrs{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--sage);
+    margin-top:2px;
+  }
+
+  /* ---------- layout ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:20px;
+    margin-top:20px;
+  }
+  @media (min-width:820px){
+    .grid{ grid-template-columns: 1.5fr 1fr; align-items:start; }
+    .receipt-card{ position:sticky; top:220px; }
+  }
+
+  .card{
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px;
+  }
+  .card h2{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:17px;
+    margin:0 0 4px;
+    color:var(--paper);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  body.lang-he .card h2{ font-family:'IBM Plex Sans Hebrew', sans-serif; }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--sage);
+  }
+
+  /* ---------- calendar ---------- */
+  .calendar-weekdays{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:5px;
+    margin-bottom:6px;
+  }
+  .calendar-weekdays span{
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color:var(--paper-dim);
+    padding:2px 0;
+  }
+  .calendar-grid{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:5px;
+  }
+  .cal-cell{
+    aspect-ratio:1;
+    min-height:44px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    padding:2px;
+    position:relative;
+  }
+  .cal-cell.empty{ border:none; background:none; cursor:default; }
+  .cal-cell:active{ background:var(--bg-sunken); }
+  .cal-cell .cal-day-num{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--paper);
+    line-height:1;
+  }
+  .cal-cell.today .cal-day-num{
+    color:var(--gold);
+    font-weight:600;
+  }
+  .cal-cell .cal-hours{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9px;
+    color:var(--sage);
+    margin-top:3px;
+    line-height:1;
+  }
+  .cal-cell.shabbat{ border-color:var(--gold-dim); }
+  .cal-cell.has-shifts{ border-color:var(--sage); }
+  .cal-cell.selected{ background:var(--gold); border-color:var(--gold); }
+  .cal-cell.selected .cal-day-num{ color:var(--bg); font-weight:600; }
+  .cal-cell.selected .cal-hours{ color:var(--bg); }
+
+  .day-detail-panel{
+    margin-top:16px;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+  .day-detail-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+  }
+  .day-detail-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .day-detail-title .shabbat-tag{
+    color:var(--gold);
+    font-size:10px;
+    border:1px solid var(--gold-dim);
+    padding:1px 6px;
+    border-radius:3px;
+  }
+
+  /* ---------- day rows (collapsible) ---------- */
+  .day-row{
+    border-top:1px solid var(--line);
+  }
+  .day-row:first-child{border-top:none;}
+  .day-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    padding:14px 4px;
+    min-height:44px;
+    gap:10px;
+  }
+  .day-head:active{ background:var(--bg-sunken); }
+  .day-date{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .day-date .dow{color:var(--paper-dim); font-size:12px;}
+  .day-date .shabbat-tag{
+    color:var(--gold);
+    font-size:10px;
+    border:1px solid var(--gold-dim);
+    padding:1px 6px;
+    border-radius:3px;
+  }
+  .day-head-right{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex:0 0 auto;
+  }
+  .day-total{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--paper-dim);
+    min-width:44px;
+    text-align:end;
+  }
+  .chevron{
+    color:var(--paper-dim);
+    font-size:12px;
+    transition:transform 0.15s ease;
+    width:14px;
+    text-align:center;
+    display:inline-block;
+  }
+  .day-row.open .chevron{ transform:rotate(90deg); color:var(--gold); }
+  [dir="rtl"] .day-row .chevron{ transform:rotate(180deg); }
+  [dir="rtl"] .day-row.open .chevron{ transform:rotate(90deg); }
+  .day-body{
+    display:none;
+    padding:0 4px 16px;
+  }
+  .day-row.open .day-body{ display:block; }
+
+  .shift-list{display:flex;flex-direction:column;gap:10px;margin-bottom:10px;}
+  .shift-item{
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px;
+  }
+  .shift-item-row1{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .shift-item-row1 .hours-field{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    background:var(--bg-sunken);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:4px 6px;
+  }
+  .hours-step{
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    color:var(--paper);
+    width:30px;
+    height:30px;
+    border-radius:6px;
+    font-size:16px;
+    line-height:1;
+    cursor:pointer;
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .hours-step:active{ border-color:var(--gold); color:var(--gold); }
+  .shift-item input[type=number]{
+    width:44px;
+    background:none;
+    border:none;
+    color:var(--paper);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:16px; /* prevents iOS auto-zoom on focus */
+    padding:2px 0;
+    text-align:center;
+    -moz-appearance:textfield;
+  }
+  .shift-item input[type=number]:focus{ outline:none; }
+  .shift-item input[type=number]::-webkit-outer-spin-button,
+  .shift-item input[type=number]::-webkit-inner-spin-button{
+    -webkit-appearance:none; margin:0;
+  }
+  .unit{ font-size:12px; color:var(--paper-dim); }
+  .del{
+    margin-inline-start:auto;
+    background:var(--bg-sunken);
+    border:1px solid var(--line);
+    color:var(--red);
+    cursor:pointer;
+    font-size:16px;
+    line-height:1;
+    width:38px;height:38px;
+    border-radius:6px;
+    flex:0 0 auto;
+  }
+  .del:active{ border-color:var(--red); }
+
+  .chip-row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+  .chip{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:8px 12px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    font-size:12.5px;
+    color:var(--paper-dim);
+    background:var(--bg-sunken);
+    cursor:pointer;
+    min-height:36px;
+    user-select:none;
+  }
+  .chip .dot{
+    width:8px;height:8px;
+    border-radius:50%;
+    border:1px solid var(--paper-dim);
+    flex:0 0 auto;
+  }
+  .chip.active{ border-color:var(--gold); color:var(--gold); }
+  .chip.active .dot{ background:var(--gold); border-color:var(--gold); }
+
+  .add-shift{
+    width:100%;
+    margin-top:2px;
+    background:none;
+    border:1px dashed var(--line);
+    color:var(--sage);
+    padding:12px;
+    border-radius:8px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:'IBM Plex Mono', monospace;
+    min-height:44px;
+  }
+  .add-shift:active{ border-color:var(--sage); color:var(--paper); }
+
+  /* ---------- receipt ---------- */
+  .receipt-line{
+    display:flex;justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    padding:7px 0;
+    color:var(--paper-dim);
+  }
+  .receipt-line span:last-child{color:var(--paper);}
+  .receipt-divider{
+    border:none;
+    border-top:1px dashed var(--line);
+    margin:8px 0;
+  }
+  .receipt-total{
+    display:flex;justify-content:space-between;
+    align-items:baseline;
+    margin-top:4px;
+  }
+  .receipt-total .lbl{
+    font-family:'Fraunces', serif;
+    font-size:15px;
+    color:var(--paper);
+  }
+  .receipt-total .amt{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:26px;
+    color:var(--gold);
+  }
+
+  /* ---------- settings ---------- */
+  .settings-btn{
+    background:none;border:none;color:var(--paper-dim);
+    cursor:pointer;font-size:12px;
+    font-family:'IBM Plex Mono', monospace;
+    text-decoration:underline;
+    padding:8px 0;
+    min-height:32px;
+  }
+  .settings-panel{
+    margin-top:6px;
+    display:none;
+    flex-direction:column;
+    gap:2px;
+    border-top:1px solid var(--line);
+    padding-top:10px;
+  }
+  .settings-panel.open{display:flex;}
+  .settings-row{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:13px;color:var(--paper-dim);
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .settings-row:last-child{ border-bottom:none; }
+  .settings-row.settings-divider{
+    padding-top:16px;
+    border-bottom:none;
+  }
+  .settings-row.settings-divider span{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--gold);
+  }
+  .settings-row .chip{ padding:6px 12px; min-height:32px; }
+  .settings-row input{
+    width:76px;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--paper);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:16px;
+    padding:8px 8px;
+    border-radius:6px;
+    text-align:end;
+  }
+  .empty-note{
+    color:var(--paper-dim);
+    font-size:12.5px;
+    font-family:'IBM Plex Mono', monospace;
+    padding:24px 0;
+    text-align:center;
+    line-height:1.6;
+  }
+  .foot-note{
+    margin-top:16px;
+    font-size:11.5px;
+    line-height:1.6;
+    color:var(--paper-dim);
+  }
+  .save-state{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--sage);
+    height:14px;
+    margin-top:6px;
+  }
+
+  /* ---------- loading screen ---------- */
+  .loading-screen{
+    position:fixed;
+    inset:0;
+    background:var(--bg);
+    z-index:200;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .loading-screen.hidden{ display:none; }
+  .loading-spinner{
+    width:36px;
+    height:36px;
+    border:3px solid var(--line);
+    border-top-color:var(--gold);
+    border-radius:50%;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{
+    to{ transform:rotate(360deg); }
+  }
+
+  /* ---------- auth ---------- */
+  .account-line{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--paper-dim);
+  }
+  .account-line button{
+    background:none;
+    border:none;
+    color:var(--sage);
+    text-decoration:underline;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:11px;
+    padding:6px 0;
+  }
+  .auth-overlay{
+    position:fixed;
+    inset:0;
+    background:var(--bg);
+    z-index:100;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .auth-overlay.hidden{ display:none; }
+  .auth-card{
+    width:100%;
+    max-width:360px;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:28px 22px;
+  }
+  .auth-card .brand{ margin-bottom:6px; }
+  .auth-card h1{ font-size:24px; margin-bottom:18px; }
+  .auth-field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-bottom:14px;
+  }
+  .auth-field label{
+    font-size:12px;
+    color:var(--paper-dim);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .auth-field input{
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--paper);
+    font-size:16px;
+    padding:12px 12px;
+    border-radius:8px;
+  }
+  .auth-field input:focus{ outline:none; border-color:var(--gold); }
+  .auth-submit{
+    width:100%;
+    background:var(--gold);
+    color:var(--bg);
+    border:none;
+    font-weight:600;
+    font-size:15px;
+    padding:13px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-top:4px;
+    min-height:46px;
+  }
+  .auth-submit:active{ background:var(--gold-dim); }
+  .auth-submit:disabled{ opacity:0.6; }
+  .auth-toggle{
+    width:100%;
+    background:none;
+    border:none;
+    color:var(--sage);
+    font-size:12.5px;
+    padding:14px 0 2px;
+    cursor:pointer;
+    text-align:center;
+  }
+  .auth-error{
+    background:rgba(193,91,74,0.12);
+    border:1px solid var(--red);
+    color:var(--red);
+    font-size:12.5px;
+    padding:10px 12px;
+    border-radius:8px;
+    margin-bottom:14px;
+    display:none;
+    line-height:1.5;
+  }
+  .auth-error.show{ display:block; }
+  .auth-lang-switch{
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    margin-top:18px;
+  }
+  .auth-lang-switch button{
+    background:var(--bg-sunken);
+    border:1px solid var(--line);
+    color:var(--paper-dim);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .auth-lang-switch button.active{ background:var(--gold); color:var(--bg); border-color:var(--gold); }
+</style>
+</head>
+<body>
+<div id="loadingScreen" class="loading-screen">
+  <div class="loading-spinner"></div>
+</div>
+<div id="authOverlay" class="auth-overlay hidden">
+  <div class="auth-card">
+    <p class="brand" id="authBrand">תלוש עבודה · Табель</p>
+    <h1 id="authTitle">Вход</h1>
+    <div class="auth-error" id="authError"></div>
+    <div class="auth-field">
+      <label id="authEmailLbl" for="authEmail">Email</label>
+      <input type="email" id="authEmail" autocomplete="email" inputmode="email">
+    </div>
+    <div class="auth-field">
+      <label id="authPasswordLbl" for="authPassword">Пароль</label>
+      <input type="password" id="authPassword" autocomplete="current-password">
+    </div>
+    <button class="auth-submit" id="authSubmit">Войти</button>
+    <button class="auth-toggle" id="authToggle">Нет аккаунта? Зарегистрироваться</button>
+    <div class="auth-lang-switch" id="authLangSwitch">
+      <button type="button" data-lang="ru">RU</button>
+      <button type="button" data-lang="en">EN</button>
+      <button type="button" data-lang="he">HE</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="headbar">
+    <div class="head-top">
+      <div>
+        <p class="brand" id="brandText">תלוש עבודה · Табель</p>
+        <h1 id="titleText">Смены и зарплата</h1>
+      </div>
+      <div class="lang-switch" id="langSwitch">
+        <button type="button" data-lang="ru">RU</button>
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="he">HE</button>
+      </div>
+    </div>
+    <div class="account-line">
+      <span id="accountEmail"></span>
+      <button id="logoutBtn" type="button">выйти</button>
+    </div>
+    <div class="month-nav">
+      <button id="prevMonth" aria-label="prev"><span class="flip">‹</span></button>
+      <div class="month-label" id="monthLabel">—</div>
+      <button id="nextMonth" aria-label="next"><span class="flip">›</span></button>
+    </div>
+    <div class="pay-strip">
+      <div>
+        <div class="lbl" id="payStripLbl">К оплате за месяц</div>
+        <div class="hrs" id="stripHours"></div>
+      </div>
+      <div class="amt" id="stripAmt">0.00 ₪</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2><span id="daysCardTitle">Дни месяца</span> <span class="eyebrow" id="monthHoursTag"></span></h2>
+      <div id="calendarWeekdays" class="calendar-weekdays"></div>
+      <div id="calendarGrid" class="calendar-grid"></div>
+      <div id="dayDetailPanel" class="day-detail-panel"></div>
+    </div>
+
+    <div class="card receipt-card">
+      <h2><span id="receiptCardTitle">Расчёт</span></h2>
+      <button class="settings-btn" id="toggleSettings">настройки ставок и обеда</button>
+
+      <div class="settings-panel" id="settingsPanel">
+        <div class="settings-row"><span id="lblRate">Ставка, ₪/час</span><input type="number" id="setRate" step="0.1" inputmode="decimal"></div>
+        <div class="settings-row"><span id="lblStdDay">Обычные часы в день</span><input type="number" id="setStdDay" step="0.1" inputmode="decimal"></div>
+        <div class="settings-row"><span id="lblOt1">125% после часа №</span><input type="number" id="setOt1From" step="1" inputmode="numeric"></div>
+        <div class="settings-row"><span id="lblOt2">150% после часа №</span><input type="number" id="setOt2From" step="1" inputmode="numeric"></div>
+        <div class="settings-row"><span id="lblShabbatBase">Шаббат/праздник, база</span><input type="number" id="setShabbatBase" step="1" inputmode="numeric"></div>
+        <div class="settings-row"><span id="lblShabbatOt1">Шаббат 175% после часа №</span><input type="number" id="setShabbatOt1" step="1" inputmode="numeric"></div>
+        <div class="settings-row"><span id="lblShabbatOt2">Шаббат 200% после часа №</span><input type="number" id="setShabbatOt2" step="1" inputmode="numeric"></div>
+        <div class="settings-row"><span id="lblDefaultHours">Часы новой смены по умолчанию</span><input type="number" id="setDefaultHours" step="0.5" min="0" max="24" inputmode="decimal"></div>
+        <div class="settings-row"><span id="lblLunch">Обед по умолчанию, мин</span><input type="number" id="setLunchMin" step="5" inputmode="numeric"></div>
+        <div class="settings-row settings-divider"><span id="lblTaxSection">— Оценка нетто —</span></div>
+        <div class="settings-row"><span id="lblTaxOn">Показывать нетто</span>
+          <button type="button" class="chip" id="taxToggle" data-role="taxToggle"><span class="dot"></span><span class="chip-text" id="taxToggleLabel">выкл</span></button>
+        </div>
+        <div class="settings-row"><span id="lblCreditPoints">Налоговых баллов (נק' זיכוי)</span><input type="number" id="setCreditPoints" step="0.25" inputmode="decimal"></div>
+        <div class="settings-row"><span id="lblPointValue">Стоимость 1 балла, ₪/мес</span><input type="number" id="setPointValue" step="1" inputmode="numeric"></div>
+        <div class="settings-row"><span id="lblNiThreshold">Порог ביטוח לאומי/בריאות, ₪</span><input type="number" id="setNiThreshold" step="1" inputmode="numeric"></div>
+        <div class="settings-row"><span id="lblNiLow">ביטוח לאומי до порога, %</span><input type="number" id="setNiLow" step="0.1" inputmode="decimal"></div>
+        <div class="settings-row"><span id="lblNiHigh">ביטוח לאומי выше порога, %</span><input type="number" id="setNiHigh" step="0.1" inputmode="decimal"></div>
+        <div class="settings-row"><span id="lblHealthLow">ביטוח בריאות до порога, %</span><input type="number" id="setHealthLow" step="0.1" inputmode="decimal"></div>
+        <div class="settings-row"><span id="lblHealthHigh">ביטוח בריאות выше порога, %</span><input type="number" id="setHealthHigh" step="0.1" inputmode="decimal"></div>
+      </div>
+
+      <div id="receiptBody"></div>
+      <div class="save-state" id="saveState"></div>
+      <p class="foot-note" id="footNote"></p>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ======================================================================
+// PASTE YOUR OWN FIREBASE CONFIG HERE (from Firebase Console → Project
+// settings → General → Your apps → SDK setup and configuration).
+// ======================================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCIPZkPudHWuik6nss4yg_-0GXY0gTKMlM",
+  authDomain: "salary-counter-a98bb.firebaseapp.com",
+  projectId: "salary-counter-a98bb",
+  storageBucket: "salary-counter-a98bb.firebasestorage.app",
+  messagingSenderId: "646049424621",
+  appId: "1:646049424621:web:321a5a397606ace46718e4"
+};
+
+const CONFIG_IS_PLACEHOLDER = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
+
+let firebaseApp, auth, db;
+if(!CONFIG_IS_PLACEHOLDER){
+  firebaseApp = initializeApp(FIREBASE_CONFIG);
+  auth = getAuth(firebaseApp);
+  db = getFirestore(firebaseApp);
+}
+
+(function(){
+
+  const I18N = {
+    ru: {
+      dir:'ltr', locale:'ru-RU',
+      brand:'תלוש עבודה · Табель', title:'Смены и зарплата',
+      payLabel:'К оплате за месяц', noShifts:'нет смен', paidHoursSuffix:'оплачиваемых ч',
+      daysCardTitle:'Дни месяца', totalPrefix:'итого',
+      receiptCardTitle:'Расчёт', settingsToggle:'настройки ставок и обеда',
+      lblRate:'Ставка, ₪/час', lblStdDay:'Обычные часы в день',
+      lblOt1:'125% после часа №', lblOt2:'150% после часа №',
+      lblShabbatBase:'Шаббат/праздник, база', lblShabbatOt1:'Шаббат 175% после часа №', lblShabbatOt2:'Шаббат 200% после часа №',
+      lblDefaultHours:'Часы новой смены по умолчанию',
+      lblLunch:'Обед по умолчанию, мин',
+      addShift:'+ добавить смену', hoursUnit:'ч.', hourAbbrev:'ч',
+      shabbatChip:'шаббат / праздник', lunchChip:m=>`обед −${m} мин`,
+      delAria:'Удалить смену', hoursAria:'Часы',
+      emptyReceipt:'Пока нет смен в этом месяце —<br>добавьте часы слева',
+      lineRegular:'Обычные', lineOt1:'Сверхурочные', lineOt2:'Сверхурочные+',
+      lineShabbatBase:'Шаббат/празд.', lineShabbatOt1:'Шаббат сверхур.', lineShabbatOt2:'Шаббат сверхур.+',
+      lineLunch:'Вычтено на обед', totalLabel:'К оплате',
+      footnote:'Расчёт основан на общих нормах израильского трудового законодательства (закон о часах труда и отдыха): 8 часов в день — 100%, часы 9–10 — 125%, далее — 150%; работа в шаббат/праздник — от 150%. По умолчанию из каждой смены вычитается неоплачиваемый обеденный перерыв (30 мин) перед расчётом надбавок — отключайте для конкретной смены или меняйте длительность в настройках. Точные условия зависят от коллективного договора, отрасли и трудового договора — используйте как ориентир, не как официальный тлуш.',
+      shabbatTag:'шаббат',
+      saveSaving:'сохранение…', saveSaved:'сохранено', saveError:'ошибка сохранения',
+      dow:['вс','пн','вт','ср','чт','пт','сб'],
+      months:['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'],
+      authTitleLogin:'Вход', authTitleSignup:'Регистрация',
+      authEmail:'Email', authPassword:'Пароль',
+      authSubmitLogin:'Войти', authSubmitSignup:'Создать аккаунт',
+      authToggleToSignup:'Нет аккаунта? Зарегистрироваться',
+      authToggleToLogin:'Уже есть аккаунт? Войти',
+      authConfigMissing:'Облачное хранилище ещё не настроено: вставьте свои ключи Firebase в код (переменная FIREBASE_CONFIG в начале скрипта).',
+      logoutBtn:'выйти',
+      authErr_default:'Что-то пошло не так. Попробуйте ещё раз.',
+      authErr_invalid_email:'Некорректный email.',
+      authErr_user_not_found:'Пользователь с таким email не найден.',
+      authErr_wrong_password:'Неверный пароль.',
+      authErr_invalid_credential:'Неверный email или пароль.',
+      authErr_email_in_use:'Этот email уже зарегистрирован — попробуйте войти.',
+      authErr_weak_password:'Пароль слишком короткий (минимум 6 символов).',
+      authErr_too_many:'Слишком много попыток. Подождите немного и попробуйте снова.',
+      lblTaxSection:'— Оценка нетто —', lblTaxOn:'Показывать нетто',
+      taxToggleOn:'вкл', taxToggleOff:'выкл',
+      lblCreditPoints:'Налоговых баллов (נק\' זיכוי)', lblPointValue:'Стоимость 1 балла, ₪/мес',
+      lblNiThreshold:'Порог ביטוח לאומי/בריאות, ₪', lblNiLow:'ביטוח לאומי до порога, %', lblNiHigh:'ביטוח לאומי выше порога, %',
+      lblHealthLow:'ביטוח בריאות до порога, %', lblHealthHigh:'ביטוח בריאות выше порога, %',
+      lineIncomeTax:'מס הכנסה (оценка)', lineNi:'ביטוח לאומי (оценка)', lineHealth:'ביטוח בריאות (оценка)',
+      netLabel:'Нетто (оценка)', taxNote:'Оценка приблизительная: пороги и шкала ежегодно меняются, реальный расчёт делает система работодателя.'
+    },
+    en: {
+      dir:'ltr', locale:'en-US',
+      brand:'Israeli Payslip · Ledger', title:'Shifts & Pay',
+      payLabel:'Owed this month', noShifts:'no shifts', paidHoursSuffix:'paid hrs',
+      daysCardTitle:'Days', totalPrefix:'total',
+      receiptCardTitle:'Breakdown', settingsToggle:'rate & lunch settings',
+      lblRate:'Rate, ₪/hour', lblStdDay:'Standard hours/day',
+      lblOt1:'125% starts at hour #', lblOt2:'150% starts at hour #',
+      lblShabbatBase:'Shabbat/holiday base', lblShabbatOt1:'Shabbat 175% starts at hour #', lblShabbatOt2:'Shabbat 200% starts at hour #',
+      lblDefaultHours:'Default hours for new shift',
+      lblLunch:'Default lunch, min',
+      addShift:'+ add shift', hoursUnit:'h', hourAbbrev:'h',
+      shabbatChip:'Shabbat / holiday', lunchChip:m=>`lunch −${m} min`,
+      delAria:'Delete shift', hoursAria:'Hours',
+      emptyReceipt:'No shifts logged this month yet —<br>add hours on the left',
+      lineRegular:'Regular', lineOt1:'Overtime', lineOt2:'Overtime+',
+      lineShabbatBase:'Shabbat/holiday', lineShabbatOt1:'Shabbat overtime', lineShabbatOt2:'Shabbat overtime+',
+      lineLunch:'Lunch deducted', totalLabel:'Total owed',
+      footnote:'Based on general provisions of Israeli labor law (Hours of Work and Rest Law): 8 hours/day at 100%, hours 9–10 at 125%, beyond that 150%; work on Shabbat/holidays from 150%. By default a 30-minute unpaid lunch break is deducted from each shift before premiums are calculated — turn it off per shift or change the length in settings. Exact terms depend on your collective agreement, sector and employment contract — use this as a guide, not an official payslip.',
+      shabbatTag:'shabbat',
+      saveSaving:'saving…', saveSaved:'saved', saveError:'save failed',
+      dow:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+      months:['January','February','March','April','May','June','July','August','September','October','November','December'],
+      authTitleLogin:'Sign in', authTitleSignup:'Create account',
+      authEmail:'Email', authPassword:'Password',
+      authSubmitLogin:'Sign in', authSubmitSignup:'Create account',
+      authToggleToSignup:"Don't have an account? Sign up",
+      authToggleToLogin:'Already have an account? Sign in',
+      authConfigMissing:"Cloud storage isn't set up yet: paste your Firebase keys into the code (the FIREBASE_CONFIG variable near the top of the script).",
+      logoutBtn:'sign out',
+      authErr_default:'Something went wrong. Please try again.',
+      authErr_invalid_email:'That email address looks invalid.',
+      authErr_user_not_found:'No account found with that email.',
+      authErr_wrong_password:'Wrong password.',
+      authErr_invalid_credential:'Wrong email or password.',
+      authErr_email_in_use:'That email is already registered — try signing in instead.',
+      authErr_weak_password:'Password is too short (min 6 characters).',
+      authErr_too_many:'Too many attempts. Please wait a moment and try again.',
+      lblTaxSection:'— Net estimate —', lblTaxOn:'Show net estimate',
+      taxToggleOn:'on', taxToggleOff:'off',
+      lblCreditPoints:'Tax credit points (נק\' זיכוי)', lblPointValue:'Value per point, ₪/mo',
+      lblNiThreshold:'ביטוח לאומי/בריאות threshold, ₪', lblNiLow:'ביטוח לאומי below threshold, %', lblNiHigh:'ביטוח לאומי above threshold, %',
+      lblHealthLow:'ביטוח בריאות below threshold, %', lblHealthHigh:'ביטוח בריאות above threshold, %',
+      lineIncomeTax:'מס הכנסה (estimate)', lineNi:'ביטוח לאומי (estimate)', lineHealth:'ביטוח בריאות (estimate)',
+      netLabel:'Net (estimate)', taxNote:'This is an approximation: thresholds and brackets change yearly; the actual calculation is done by your employer\'s payroll system.'
+    },
+    he: {
+      dir:'rtl', locale:'he-IL',
+      brand:'תלוש עבודה · יומן', title:'משמרות ושכר',
+      payLabel:'לתשלום החודש', noShifts:'אין משמרות', paidHoursSuffix:'שעות בתשלום',
+      daysCardTitle:'ימי החודש', totalPrefix:'סה"כ',
+      receiptCardTitle:'חישוב', settingsToggle:'הגדרות תעריף וארוחה',
+      lblRate:'תעריף, ₪ לשעה', lblStdDay:'שעות רגילות ביום',
+      lblOt1:'125% מהשעה מס׳', lblOt2:'150% מהשעה מס׳',
+      lblShabbatBase:'שבת/חג, בסיס', lblShabbatOt1:'שבת 175% מהשעה מס׳', lblShabbatOt2:'שבת 200% מהשעה מס׳',
+      lblDefaultHours:'שעות ברירת מחדל למשמרת חדשה',
+      lblLunch:'הפסקת צהריים כברירת מחדל, דק׳',
+      addShift:'+ הוספת משמרת', hoursUnit:'ש׳', hourAbbrev:'ש',
+      shabbatChip:'שבת / חג', lunchChip:m=>`הפסקה −${m} דק׳`,
+      delAria:'מחיקת משמרת', hoursAria:'שעות',
+      emptyReceipt:'עדיין אין משמרות החודש —<br>הוסיפו שעות משמאל',
+      lineRegular:'רגילות', lineOt1:'שעות נוספות', lineOt2:'שעות נוספות+',
+      lineShabbatBase:'שבת/חג', lineShabbatOt1:'שבת נוספות', lineShabbatOt2:'שבת נוספות+',
+      lineLunch:'נוכה עבור הפסקה', totalLabel:'לתשלום',
+      footnote:'החישוב מבוסס על הוראות כלליות בחוק שעות עבודה ומנוחה: 8 שעות ביום = 100%, שעות 9–10 = 125%, מעבר לכך 150%; עבודה בשבת/חג מ-150%. כברירת מחדל מנוכות 30 דקות הפסקה לא-בתשלום מכל משמרת לפני חישוב התוספות — ניתן לבטל לכל משמרת בנפרד או לשנות את משך ההפסקה בהגדרות. התנאים המדויקים תלויים בהסכם קיבוצי, בענף ובחוזה העבודה — יש להשתמש בכלי זה כאומדן בלבד ולא כתלוש רשמי.',
+      shabbatTag:'שבת',
+      saveSaving:'שומר…', saveSaved:'נשמר', saveError:'שגיאת שמירה',
+      dow:['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'],
+      months:['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'],
+      authTitleLogin:'התחברות', authTitleSignup:'יצירת חשבון',
+      authEmail:'אימייל', authPassword:'סיסמה',
+      authSubmitLogin:'התחברות', authSubmitSignup:'יצירת חשבון',
+      authToggleToSignup:'אין לך חשבון? הרשמה',
+      authToggleToLogin:'כבר יש לך חשבון? התחברות',
+      authConfigMissing:'האחסון בענן עדיין לא מוגדר: יש להדביק את מפתחות ה-Firebase בקוד (המשתנה FIREBASE_CONFIG בתחילת הסקריפט).',
+      logoutBtn:'התנתקות',
+      authErr_default:'משהו השתבש. נסו שוב.',
+      authErr_invalid_email:'כתובת אימייל לא תקינה.',
+      authErr_user_not_found:'לא נמצא חשבון עם אימייל זה.',
+      authErr_wrong_password:'סיסמה שגויה.',
+      authErr_invalid_credential:'אימייל או סיסמה שגויים.',
+      authErr_email_in_use:'האימייל הזה כבר רשום — נסו להתחבר.',
+      authErr_weak_password:'הסיסמה קצרה מדי (לפחות 6 תווים).',
+      authErr_too_many:'יותר מדי ניסיונות. יש להמתין ולנסות שוב.',
+      lblTaxSection:'— אומדן נטו —', lblTaxOn:'הצגת אומדן נטו',
+      taxToggleOn:'פעיל', taxToggleOff:'כבוי',
+      lblCreditPoints:'נקודות זיכוי', lblPointValue:'שווי נקודה, ₪ לחודש',
+      lblNiThreshold:'תקרת ביטוח לאומי/בריאות, ₪', lblNiLow:'ביטוח לאומי עד התקרה, %', lblNiHigh:'ביטוח לאומי מעל התקרה, %',
+      lblHealthLow:'ביטוח בריאות עד התקרה, %', lblHealthHigh:'ביטוח בריאות מעל התקרה, %',
+      lineIncomeTax:'מס הכנסה (אומדן)', lineNi:'ביטוח לאומי (אומדן)', lineHealth:'ביטוח בריאות (אומדן)',
+      netLabel:'נטו (אומדן)', taxNote:'זהו אומדן בלבד: המדרגות והתקרות מתעדכנות מדי שנה, והחישוב הרשמי מתבצע במערכת השכר של המעסיק.'
+    }
+  };
+
+  let state = {
+    lang: 'ru',
+    settings: {
+      rate: 34.32,
+      stdDay: 8,
+      ot1From: 9,
+      ot2From: 11,
+      shabbatBase: 150,
+      shabbatOt1: 9,
+      shabbatOt2: 11,
+      lunchMinutes: 30,
+      defaultShiftHours: 9,
+      showNet: false,
+      creditPoints: 2.25,
+      pointValue: 242,
+      niThreshold: 7522,
+      niLow: 0.4,
+      niHigh: 7,
+      healthLow: 3.1,
+      healthHigh: 5
+    },
+    shifts: {} // "YYYY-MM-DD": [{hours, shabbat, lunch}]
+  };
+
+  function t(){ return I18N[state.lang]; }
+
+  let cursor = new Date();
+  cursor.setDate(1);
+
+  // (day list is now rendered as a calendar grid; see render()/renderDayDetail() below)
+
+  let currentUser = null;
+  let authMode = 'login';
+
+  function pad(n){ return n < 10 ? '0'+n : ''+n; }
+  function dateKey(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
+
+  async function loadCloudData(){
+    if(!currentUser || !db) return;
+    try{
+      const ref = doc(db, 'users', currentUser.uid);
+      const snap = await getDoc(ref);
+      if(snap.exists()){
+        const parsed = snap.data();
+        state.settings = Object.assign(state.settings, parsed.settings || {});
+        state.shifts = parsed.shifts || {};
+        if(parsed.lang && I18N[parsed.lang]) state.lang = parsed.lang;
+      }
+    }catch(e){
+      console.error(e);
+    }
+    hydrateSettingsInputs();
+    applyLanguageChrome();
+    render();
+  }
+
+  let saveTimer = null;
+  function saveData(){
+    if(!currentUser || !db) return;
+    const el = document.getElementById('saveState');
+    el.textContent = t().saveSaving;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async ()=>{
+      try{
+        const ref = doc(db, 'users', currentUser.uid);
+        await setDoc(ref, {
+          lang: state.lang,
+          settings: state.settings,
+          shifts: state.shifts
+        });
+        el.textContent = t().saveSaved;
+        setTimeout(()=>{ if(el.textContent===t().saveSaved) el.textContent=''; }, 1500);
+      }catch(e){
+        el.textContent = t().saveError;
+      }
+    }, 500);
+  }
+
+  // ---------- auth screen ----------
+  function applyAuthChrome(){
+    const tt = t();
+    document.documentElement.setAttribute('lang', state.lang);
+    document.documentElement.setAttribute('dir', tt.dir);
+    document.body.classList.toggle('lang-he', state.lang === 'he');
+    document.getElementById('authBrand').textContent = tt.brand;
+    document.getElementById('authTitle').textContent = authMode==='login' ? tt.authTitleLogin : tt.authTitleSignup;
+    document.getElementById('authEmailLbl').textContent = tt.authEmail;
+    document.getElementById('authPasswordLbl').textContent = tt.authPassword;
+    document.getElementById('authSubmit').textContent = authMode==='login' ? tt.authSubmitLogin : tt.authSubmitSignup;
+    document.getElementById('authToggle').textContent = authMode==='login' ? tt.authToggleToSignup : tt.authToggleToLogin;
+    document.querySelectorAll('#authLangSwitch button').forEach(b=>{
+      b.classList.toggle('active', b.getAttribute('data-lang') === state.lang);
+    });
+  }
+
+  function showAuthError(msg){
+    const el = document.getElementById('authError');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+  function hideAuthError(){
+    document.getElementById('authError').classList.remove('show');
+  }
+
+  function mapAuthError(code){
+    const tt = t();
+    const map = {
+      'auth/invalid-email': tt.authErr_invalid_email,
+      'auth/user-not-found': tt.authErr_user_not_found,
+      'auth/wrong-password': tt.authErr_wrong_password,
+      'auth/invalid-credential': tt.authErr_invalid_credential,
+      'auth/email-already-in-use': tt.authErr_email_in_use,
+      'auth/weak-password': tt.authErr_weak_password,
+      'auth/too-many-requests': tt.authErr_too_many
+    };
+    return map[code] || tt.authErr_default;
+  }
+
+  function bindAuthUI(){
+    document.getElementById('authLangSwitch').addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-lang]');
+      if(!btn) return;
+      state.lang = btn.getAttribute('data-lang');
+      applyAuthChrome();
+    });
+    document.getElementById('authToggle').addEventListener('click', ()=>{
+      authMode = authMode==='login' ? 'signup' : 'login';
+      hideAuthError();
+      applyAuthChrome();
+    });
+    async function submitAuth(){
+      if(!auth){
+        showAuthError(t().authConfigMissing);
+        return;
+      }
+      hideAuthError();
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const btn = document.getElementById('authSubmit');
+      btn.disabled = true;
+      try{
+        if(authMode==='login'){
+          await signInWithEmailAndPassword(auth, email, password);
+        } else {
+          await createUserWithEmailAndPassword(auth, email, password);
+        }
+      }catch(e){
+        showAuthError(mapAuthError(e.code));
+      }finally{
+        btn.disabled = false;
+      }
+    }
+    document.getElementById('authSubmit').addEventListener('click', submitAuth);
+    document.getElementById('authPassword').addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter') submitAuth();
+    });
+    document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+      if(auth) await signOut(auth);
+    });
+  }
+
+  function hydrateSettingsInputs(){
+    document.getElementById('setRate').value = state.settings.rate;
+    document.getElementById('setStdDay').value = state.settings.stdDay;
+    document.getElementById('setOt1From').value = state.settings.ot1From;
+    document.getElementById('setOt2From').value = state.settings.ot2From;
+    document.getElementById('setShabbatBase').value = state.settings.shabbatBase;
+    document.getElementById('setShabbatOt1').value = state.settings.shabbatOt1;
+    document.getElementById('setShabbatOt2').value = state.settings.shabbatOt2;
+    document.getElementById('setDefaultHours').value = state.settings.defaultShiftHours;
+    document.getElementById('setLunchMin').value = state.settings.lunchMinutes;
+    document.getElementById('setCreditPoints').value = state.settings.creditPoints;
+    document.getElementById('setPointValue').value = state.settings.pointValue;
+    document.getElementById('setNiThreshold').value = state.settings.niThreshold;
+    document.getElementById('setNiLow').value = state.settings.niLow;
+    document.getElementById('setNiHigh').value = state.settings.niHigh;
+    document.getElementById('setHealthLow').value = state.settings.healthLow;
+    document.getElementById('setHealthHigh').value = state.settings.healthHigh;
+    updateTaxToggleUI();
+  }
+
+  function bindSettings(){
+    const map = {
+      setRate:'rate', setStdDay:'stdDay', setOt1From:'ot1From', setOt2From:'ot2From',
+      setShabbatBase:'shabbatBase', setShabbatOt1:'shabbatOt1', setShabbatOt2:'shabbatOt2',
+      setDefaultHours:'defaultShiftHours',
+      setLunchMin:'lunchMinutes',
+      setCreditPoints:'creditPoints', setPointValue:'pointValue',
+      setNiThreshold:'niThreshold', setNiLow:'niLow', setNiHigh:'niHigh',
+      setHealthLow:'healthLow', setHealthHigh:'healthHigh'
+    };
+    Object.keys(map).forEach(id=>{
+      document.getElementById(id).addEventListener('input', (e)=>{
+        const v = parseFloat(e.target.value);
+        state.settings[map[id]] = isNaN(v) ? 0 : v;
+        renderReceipt();
+        refreshLunchChipLabels();
+        saveData();
+      });
+    });
+    document.getElementById('toggleSettings').addEventListener('click', ()=>{
+      document.getElementById('settingsPanel').classList.toggle('open');
+    });
+    document.getElementById('taxToggle').addEventListener('click', ()=>{
+      state.settings.showNet = !state.settings.showNet;
+      updateTaxToggleUI();
+      renderReceipt();
+      saveData();
+    });
+  }
+
+  function updateTaxToggleUI(){
+    const tt = t();
+    const on = !!state.settings.showNet;
+    const btn = document.getElementById('taxToggle');
+    btn.classList.toggle('active', on);
+    document.getElementById('taxToggleLabel').textContent = on ? tt.taxToggleOn : tt.taxToggleOff;
+  }
+
+  function bindLangSwitch(){
+    document.getElementById('langSwitch').addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-lang]');
+      if(!btn) return;
+      const lang = btn.getAttribute('data-lang');
+      if(lang === state.lang) return;
+      state.lang = lang;
+      applyLanguageChrome();
+      selectedDateKey = null;
+      render();
+      saveData();
+    });
+  }
+
+  function applyLanguageChrome(){
+    const tt = t();
+    document.documentElement.setAttribute('lang', state.lang);
+    document.documentElement.setAttribute('dir', tt.dir);
+    document.body.classList.toggle('lang-he', state.lang === 'he');
+
+    document.getElementById('brandText').textContent = tt.brand;
+    document.getElementById('titleText').textContent = tt.title;
+    document.getElementById('payStripLbl').textContent = tt.payLabel;
+    document.getElementById('daysCardTitle').textContent = tt.daysCardTitle;
+    document.getElementById('receiptCardTitle').textContent = tt.receiptCardTitle;
+    document.getElementById('toggleSettings').textContent = tt.settingsToggle;
+    document.getElementById('lblRate').textContent = tt.lblRate;
+    document.getElementById('lblStdDay').textContent = tt.lblStdDay;
+    document.getElementById('lblOt1').textContent = tt.lblOt1;
+    document.getElementById('lblOt2').textContent = tt.lblOt2;
+    document.getElementById('lblShabbatBase').textContent = tt.lblShabbatBase;
+    document.getElementById('lblShabbatOt1').textContent = tt.lblShabbatOt1;
+    document.getElementById('lblShabbatOt2').textContent = tt.lblShabbatOt2;
+    document.getElementById('lblDefaultHours').textContent = tt.lblDefaultHours;
+    document.getElementById('lblLunch').textContent = tt.lblLunch;
+    document.getElementById('footNote').innerHTML = tt.footnote;
+    document.getElementById('logoutBtn').textContent = tt.logoutBtn;
+    document.getElementById('lblTaxSection').textContent = tt.lblTaxSection;
+    document.getElementById('lblTaxOn').textContent = tt.lblTaxOn;
+    document.getElementById('lblCreditPoints').textContent = tt.lblCreditPoints;
+    document.getElementById('lblPointValue').textContent = tt.lblPointValue;
+    document.getElementById('lblNiThreshold').textContent = tt.lblNiThreshold;
+    document.getElementById('lblNiLow').textContent = tt.lblNiLow;
+    document.getElementById('lblNiHigh').textContent = tt.lblNiHigh;
+    document.getElementById('lblHealthLow').textContent = tt.lblHealthLow;
+    document.getElementById('lblHealthHigh').textContent = tt.lblHealthHigh;
+    updateTaxToggleUI();
+
+    document.querySelectorAll('#langSwitch button').forEach(b=>{
+      b.classList.toggle('active', b.getAttribute('data-lang') === state.lang);
+    });
+  }
+
+  function refreshLunchChipLabels(){
+    document.querySelectorAll('.chip[data-role="lunch"] .chip-text').forEach(el=>{
+      el.textContent = t().lunchChip(state.settings.lunchMinutes||30);
+    });
+  }
+
+  function paidHoursFor(shift){
+    const gross = parseFloat(shift.hours)||0;
+    const deductLunch = shift.lunch !== false;
+    const lunchHours = deductLunch ? (state.settings.lunchMinutes||0)/60 : 0;
+    return Math.max(0, gross - lunchHours);
+  }
+
+  function splitDayHours(totalHours, isShabbat){
+    const s = state.settings;
+    const ot1From = isShabbat ? s.shabbatOt1 : s.ot1From;
+    const ot2From = isShabbat ? s.shabbatOt2 : s.ot2From;
+    const tier0End = Math.min(totalHours, ot1From - 1);
+    const tier1End = Math.min(totalHours, ot2From - 1);
+
+    const regular = Math.max(0, tier0End);
+    const mid = Math.max(0, tier1End - tier0End);
+    const high = Math.max(0, totalHours - tier1End);
+
+    return { regular, mid, high };
+  }
+
+  function computeMonthTotals(y,m){
+    const s = state.settings;
+    let totals = {
+      regularHours:0, midHours:0, highHours:0,
+      shabbatRegularHours:0, shabbatMidHours:0, shabbatHighHours:0,
+      pay:0, lunchHoursDeducted:0, paidHoursTotal:0
+    };
+    Object.keys(state.shifts).forEach(key=>{
+      const [ky,km] = key.split('-').map(Number);
+      if(ky !== y || (km-1) !== m) return;
+      (state.shifts[key]||[]).forEach(shift=>{
+        const gross = parseFloat(shift.hours)||0;
+        if(gross<=0) return;
+        const hours = paidHoursFor(shift);
+        totals.lunchHoursDeducted += (gross - hours);
+        totals.paidHoursTotal += hours;
+        const {regular, mid, high} = splitDayHours(hours, shift.shabbat);
+        if(shift.shabbat){
+          totals.shabbatRegularHours += regular;
+          totals.shabbatMidHours += mid;
+          totals.shabbatHighHours += high;
+          totals.pay += regular * s.rate * (s.shabbatBase/100);
+          totals.pay += mid * s.rate * 1.75;
+          totals.pay += high * s.rate * 2.0;
+        } else {
+          totals.regularHours += regular;
+          totals.midHours += mid;
+          totals.highHours += high;
+          totals.pay += regular * s.rate * 1.0;
+          totals.pay += mid * s.rate * 1.25;
+          totals.pay += high * s.rate * 1.5;
+        }
+      });
+    });
+    return totals;
+  }
+
+  function fmt(n){ return n.toLocaleString(t().locale, {minimumFractionDigits:0, maximumFractionDigits:1}); }
+  function fmtMoney(n){ return n.toLocaleString(t().locale, {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+  // ---------- approximate net-pay estimate ----------
+  // Monthly progressive income-tax brackets (approximate, editable set is limited to
+  // credit points / point value in settings; brackets themselves are not user-editable
+  // in the UI because they rarely change and exposing ~7 numbers would clutter settings).
+  const INCOME_TAX_BRACKETS = [
+    { upTo: 7010,     rate: 0.10 },
+    { upTo: 10050,    rate: 0.14 },
+    { upTo: 16150,    rate: 0.20 },
+    { upTo: 22440,    rate: 0.31 },
+    { upTo: 46690,    rate: 0.35 },
+    { upTo: 60130,    rate: 0.47 },
+    { upTo: Infinity, rate: 0.50 }
+  ];
+
+  function estimateIncomeTax(grossMonthly, s){
+    let tax = 0;
+    let prev = 0;
+    for (const b of INCOME_TAX_BRACKETS){
+      if (grossMonthly <= prev) break;
+      const amountInBracket = Math.min(grossMonthly, b.upTo) - prev;
+      tax += amountInBracket * b.rate;
+      prev = b.upTo;
+    }
+    tax -= (s.creditPoints || 0) * (s.pointValue || 0);
+    return Math.max(0, tax);
+  }
+
+  function estimateNiHealth(grossMonthly, s){
+    const threshold = Math.max(0, s.niThreshold || 0);
+    const low = Math.min(grossMonthly, threshold);
+    const high = Math.max(0, grossMonthly - threshold);
+    const ni = low * ((s.niLow||0)/100) + high * ((s.niHigh||0)/100);
+    const health = low * ((s.healthLow||0)/100) + high * ((s.healthHigh||0)/100);
+    return { ni, health };
+  }
+
+  function todayKey(){
+    const now = new Date();
+    return dateKey(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  let selectedDateKey = null;
+
+  function render(){
+    const tt = t();
+    const y = cursor.getFullYear();
+    const m = cursor.getMonth();
+    document.getElementById('monthLabel').textContent = `${tt.months[m]} ${y}`;
+
+    // weekday header row (Sun..Sat)
+    const wd = document.getElementById('calendarWeekdays');
+    wd.innerHTML = tt.dow.map(d=>`<span>${d}</span>`).join('');
+
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    const firstDow = new Date(y, m, 1).getDay(); // 0=Sun
+    const grid = document.getElementById('calendarGrid');
+    grid.innerHTML = '';
+
+    let monthTotalHours = 0;
+    const tk = todayKey();
+
+    // pick a sensible default selection when entering a new month
+    if(!selectedDateKey || selectedDateKey.slice(0,7) !== dateKey(y,m,1).slice(0,7)){
+      const monthPrefix = `${y}-${pad(m+1)}-`;
+      if(tk.startsWith(monthPrefix)){
+        selectedDateKey = tk;
+      } else {
+        const firstWithShifts = Object.keys(state.shifts)
+          .filter(k=>k.startsWith(monthPrefix) && (state.shifts[k]||[]).length>0)
+          .sort()[0];
+        selectedDateKey = firstWithShifts || dateKey(y,m,1);
+      }
+    }
+
+    for(let i=0;i<firstDow;i++){
+      const empty = document.createElement('div');
+      empty.className = 'cal-cell empty';
+      grid.appendChild(empty);
+    }
+
+    for(let d=1; d<=daysInMonth; d++){
+      const key = dateKey(y,m,d);
+      const dow = new Date(y,m,d).getDay();
+      const shifts = state.shifts[key] || [];
+      const dayHours = shifts.reduce((a,s)=>a+(parseFloat(s.hours)||0),0);
+      monthTotalHours += dayHours;
+
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'cal-cell'
+        + (dow===6 ? ' shabbat' : '')
+        + (dayHours>0 ? ' has-shifts' : '')
+        + (key===tk ? ' today' : '')
+        + (key===selectedDateKey ? ' selected' : '');
+      cell.dataset.key = key;
+      cell.innerHTML = `
+        <span class="cal-day-num">${d}</span>
+        <span class="cal-hours">${dayHours>0 ? fmt(dayHours) : ''}</span>
+      `;
+      cell.addEventListener('click', ()=>{
+        selectedDateKey = key;
+        grid.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'));
+        cell.classList.add('selected');
+        renderDayDetail();
+      });
+      grid.appendChild(cell);
+    }
+
+    document.getElementById('monthHoursTag').textContent = monthTotalHours>0 ? `${tt.totalPrefix} ${fmt(monthTotalHours)} ${tt.hourAbbrev}` : '';
+    renderDayDetail();
+    renderReceipt();
+  }
+
+  function refreshCalendarCell(key){
+    const cell = document.querySelector(`.cal-cell[data-key="${key}"]`);
+    if(!cell) return;
+    const shifts = state.shifts[key] || [];
+    const dayHours = shifts.reduce((a,s)=>a+(parseFloat(s.hours)||0),0);
+    cell.classList.toggle('has-shifts', dayHours>0);
+    cell.querySelector('.cal-hours').textContent = dayHours>0 ? fmt(dayHours) : '';
+    const y = cursor.getFullYear(), m = cursor.getMonth();
+    let monthTotalHours = 0;
+    Object.keys(state.shifts).forEach(k=>{
+      if(k.startsWith(`${y}-${pad(m+1)}-`)) monthTotalHours += (state.shifts[k]||[]).reduce((a,s)=>a+(parseFloat(s.hours)||0),0);
+    });
+    document.getElementById('monthHoursTag').textContent = monthTotalHours>0 ? `${t().totalPrefix} ${fmt(monthTotalHours)} ${t().hourAbbrev}` : '';
+  }
+
+  function renderDayDetail(){
+    const tt = t();
+    const panel = document.getElementById('dayDetailPanel');
+    if(!selectedDateKey){ panel.innerHTML=''; return; }
+
+    const [y,m,d] = selectedDateKey.split('-').map(Number);
+    const dow = new Date(y, m-1, d).getDay();
+    const shifts = state.shifts[selectedDateKey] || [];
+
+    panel.innerHTML = '';
+
+    const header = document.createElement('div');
+    header.className = 'day-detail-header';
+    header.innerHTML = `
+      <div class="day-detail-title">
+        <span class="dow">${tt.dow[dow]}</span>${pad(d)}.${pad(m)}
+        ${dow===6 ? `<span class="shabbat-tag">${tt.shabbatTag}</span>` : ''}
+      </div>
+    `;
+    panel.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'shift-list';
+    shifts.forEach((shift, idx)=>{
+      list.appendChild(buildShiftItem(shift, idx, shifts, selectedDateKey, dow));
+    });
+    panel.appendChild(list);
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-shift';
+    addBtn.textContent = tt.addShift;
+    addBtn.addEventListener('click', ()=>{
+      if(!state.shifts[selectedDateKey]) state.shifts[selectedDateKey] = [];
+      state.shifts[selectedDateKey].push({hours: state.settings.defaultShiftHours || 9, shabbat: dow===5||dow===6, lunch: true});
+      renderDayDetail();
+      refreshCalendarCell(selectedDateKey);
+      renderReceipt();
+      saveData();
+    });
+    panel.appendChild(addBtn);
+  }
+
+  function buildShiftItem(shift, idx, shifts, key, dow){
+    const tt = t();
+    const item = document.createElement('div');
+    item.className = 'shift-item';
+
+    const row1 = document.createElement('div');
+    row1.className = 'shift-item-row1';
+    row1.innerHTML = `
+      <div class="hours-field">
+        <button type="button" class="hours-step" data-dir="-1" aria-label="−0.5">−</button>
+        <input type="number" min="0" max="24" step="0.5" inputmode="decimal" value="${shift.hours}" aria-label="${tt.hoursAria}"/>
+        <button type="button" class="hours-step" data-dir="1" aria-label="+0.5">+</button>
+        <span class="unit">${tt.hoursUnit}</span>
+      </div>
+      <button class="del" aria-label="${tt.delAria}">✕</button>
+    `;
+    item.appendChild(row1);
+
+    const chips = document.createElement('div');
+    chips.className = 'chip-row';
+    const shabbatOn = !!shift.shabbat;
+    const lunchOn = shift.lunch !== false;
+    chips.innerHTML = `
+      <button type="button" class="chip ${shabbatOn?'active':''}" data-role="shabbat">
+        <span class="dot"></span><span class="chip-text">${tt.shabbatChip}</span>
+      </button>
+      <button type="button" class="chip ${lunchOn?'active':''}" data-role="lunch">
+        <span class="dot"></span><span class="chip-text">${tt.lunchChip(state.settings.lunchMinutes||30)}</span>
+      </button>
+    `;
+    item.appendChild(chips);
+
+    const hoursInput = row1.querySelector('input[type=number]');
+    const delBtn = row1.querySelector('.del');
+    const stepBtns = row1.querySelectorAll('.hours-step');
+    const shabbatChip = chips.querySelector('[data-role="shabbat"]');
+    const lunchChip = chips.querySelector('[data-role="lunch"]');
+
+    function applyHours(newVal){
+      newVal = Math.max(0, Math.min(24, newVal));
+      shift.hours = newVal;
+      hoursInput.value = newVal;
+      refreshCalendarCell(key);
+      renderReceipt();
+      saveData();
+    }
+
+    hoursInput.addEventListener('input', e=>{
+      shift.hours = e.target.value;
+      refreshCalendarCell(key);
+      renderReceipt();
+      saveData();
+    });
+    stepBtns.forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const dir = parseFloat(btn.dataset.dir);
+        const current = parseFloat(hoursInput.value) || 0;
+        applyHours(Math.round((current + dir*0.5)*100)/100);
+      });
+    });
+    shabbatChip.addEventListener('click', ()=>{
+      shift.shabbat = !shift.shabbat;
+      shabbatChip.classList.toggle('active', shift.shabbat);
+      renderReceipt();
+      saveData();
+    });
+    lunchChip.addEventListener('click', ()=>{
+      shift.lunch = shift.lunch === false ? true : false;
+      lunchChip.classList.toggle('active', shift.lunch !== false);
+      renderReceipt();
+      saveData();
+    });
+    delBtn.addEventListener('click', ()=>{
+      shifts.splice(idx,1);
+      if(shifts.length===0) delete state.shifts[key];
+      renderDayDetail();
+      refreshCalendarCell(key);
+      renderReceipt();
+      saveData();
+    });
+
+    return item;
+  }
+
+  function renderReceipt(){
+    const tt = t();
+    const y = cursor.getFullYear();
+    const m = cursor.getMonth();
+    const total = computeMonthTotals(y,m);
+    const body = document.getElementById('receiptBody');
+
+    document.getElementById('stripAmt').textContent = fmtMoney(total.pay) + ' ₪';
+    document.getElementById('stripHours').textContent = total.paidHoursTotal>0 ? `${fmt(total.paidHoursTotal)} ${tt.paidHoursSuffix}` : tt.noShifts;
+
+    const hasAny = (total.regularHours+total.midHours+total.highHours+total.shabbatRegularHours+total.shabbatMidHours+total.shabbatHighHours) > 0;
+
+    if(!hasAny){
+      body.innerHTML = `<div class="empty-note">${tt.emptyReceipt}</div>`;
+      return;
+    }
+
+    let html = '';
+    const line = (label, hours, rate) => `
+      <div class="receipt-line"><span>${label} · ${fmt(hours)} ${tt.hourAbbrev} × ${rate}</span><span>${fmtMoney(hours * state.settings.rate * (parseFloat(rate)/100))} ₪</span></div>
+    `;
+    if(total.regularHours>0) html += line(tt.lineRegular, total.regularHours, '100%');
+    if(total.midHours>0) html += line(tt.lineOt1, total.midHours, '125%');
+    if(total.highHours>0) html += line(tt.lineOt2, total.highHours, '150%');
+    if(total.shabbatRegularHours>0) html += line(tt.lineShabbatBase, total.shabbatRegularHours, state.settings.shabbatBase+'%');
+    if(total.shabbatMidHours>0) html += line(tt.lineShabbatOt1, total.shabbatMidHours, '175%');
+    if(total.shabbatHighHours>0) html += line(tt.lineShabbatOt2, total.shabbatHighHours, '200%');
+
+    if(total.lunchHoursDeducted>0){
+      html += `<div class="receipt-line"><span>${tt.lineLunch}</span><span>−${fmt(total.lunchHoursDeducted)} ${tt.hourAbbrev}</span></div>`;
+    }
+
+    html += `<hr class="receipt-divider"/>`;
+    html += `
+      <div class="receipt-total">
+        <span class="lbl">${tt.totalLabel}</span>
+        <span class="amt">${fmtMoney(total.pay)} ₪</span>
+      </div>
+    `;
+
+    if(state.settings.showNet){
+      const incomeTax = estimateIncomeTax(total.pay, state.settings);
+      const { ni, health } = estimateNiHealth(total.pay, state.settings);
+      const net = Math.max(0, total.pay - incomeTax - ni - health);
+      html += `<hr class="receipt-divider"/>`;
+      html += `<div class="receipt-line"><span>${tt.lineIncomeTax}</span><span>−${fmtMoney(incomeTax)} ₪</span></div>`;
+      html += `<div class="receipt-line"><span>${tt.lineNi}</span><span>−${fmtMoney(ni)} ₪</span></div>`;
+      html += `<div class="receipt-line"><span>${tt.lineHealth}</span><span>−${fmtMoney(health)} ₪</span></div>`;
+      html += `
+        <div class="receipt-total">
+          <span class="lbl">${tt.netLabel}</span>
+          <span class="amt">${fmtMoney(net)} ₪</span>
+        </div>
+      `;
+      html += `<p class="foot-note" style="margin-top:10px;">${tt.taxNote}</p>`;
+    }
+
+    body.innerHTML = html;
+  }
+
+  document.getElementById('prevMonth').addEventListener('click', ()=>{
+    cursor.setMonth(cursor.getMonth()-1);
+    render();
+  });
+  document.getElementById('nextMonth').addEventListener('click', ()=>{
+    cursor.setMonth(cursor.getMonth()+1);
+    render();
+  });
+
+  bindSettings();
+  bindLangSwitch();
+  bindAuthUI();
+  applyAuthChrome();
+
+  if(!auth){
+    // Firebase isn't configured yet — show the setup message on the auth screen.
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('authOverlay').classList.remove('hidden');
+    showAuthError(t().authConfigMissing);
+  } else {
+    onAuthStateChanged(auth, async (user)=>{
+      currentUser = user;
+      if(user){
+        document.getElementById('accountEmail').textContent = user.email || '';
+        applyLanguageChrome();
+        await loadCloudData();
+        document.getElementById('authOverlay').classList.add('hidden');
+      } else {
+        document.getElementById('authOverlay').classList.remove('hidden');
+      }
+      document.getElementById('loadingScreen').classList.add('hidden');
+    });
+  }
+})();
+</script>
+</body>
+</html>
